@@ -6,3 +6,9 @@ ls
 pretext build web
 kpsewhich tikz.sty
 exit
+cd homework_explanations/
+pdflatex test.tex
+pretext build web
+kpsewhich tikz.sty
+cd ..
+exit
