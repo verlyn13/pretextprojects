@@ -1,39 +1,35 @@
 # Use a more LaTeX-focused base image
 FROM texlive/texlive:latest
 
-# Install Python and pip
+# Install Python, pip, build essentials, gosu (for user switching), and PreTeXt dependencies
+# in one RUN command to reduce layers and improve build efficiency
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential \
+    gfortran \
+    xsltproc \
+    libxml2-utils \
+    libxslt1-dev \
+    gosu && \  
+    rm -rf /var/lib/apt/lists/*
 
 # Create a virtual environment and activate it
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install Jupyter and jupyter-client in the virtual environment
-RUN pip install jupyter jupyter-client
+# Uninstall pretextbook and install the latest version of pretext
+RUN pip uninstall -y pretextbook && \
+    pip install --upgrade pretext
 
-# Install dependencies for PreTeXt and other XML tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    xsltproc \
-    libxml2-utils \
-    libxslt1-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python libraries for scientific computing, interactivity, and PreTeXt in the virtual environment
-RUN pip install numpy pandas matplotlib ipywidgets notebook pretextbook
-
-# Install the PreTeXt CLI in the virtual environment
-RUN pip install pretext
+# Install Jupyter and other Python packages
+# PreTeXt is already installed in the previous step, so it's omitted here
+RUN pip install jupyter==1.0.0 jupyter-client==6.1.12 numpy pandas matplotlib ipywidgets notebook
 
 # Update TeX Live package database to ensure all packages are recognized
 RUN mktexlsr
-
-# TikZ and related packages should be included in the texlive/texlive:latest base image, so no need for separate installation
-# If additional LaTeX packages are needed, they can be installed with tlmgr here
 
 # Create a 'jupyter' user with a home directory
 RUN useradd -m -s /bin/bash jupyter
@@ -41,14 +37,15 @@ RUN useradd -m -s /bin/bash jupyter
 # Set the working directory to the 'jupyter' user's home directory
 WORKDIR /home/jupyter
 
-# Grant the 'jupyter' user ownership over its home directory
-RUN chown -R jupyter:jupyter /home/jupyter
-
-# Switch to the 'jupyter' user
-USER jupyter
+# Copy the entrypoint script into the container and make it executable
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Expose port 8888 for Jupyter Notebook
 EXPOSE 8888
 
-# Start Jupyter Notebook with no token and no password, and allow access from any IP
-CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token=''", "--NotebookApp.password=''"]
+# Set the entrypoint to the entrypoint script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Default command to run when starting the container
+CMD ["--ip=0.0.0.0", "--port=8888", "--no-browser", "--NotebookApp.token=''", "--NotebookApp.password=''"]
