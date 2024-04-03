@@ -13,7 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xsltproc \
     libxml2-utils \
     libxslt1-dev \
-    gosu && \  
+    gosu \
+    net-tools \
+    iproute2 \
+    lsof \
+    procps && \  
     rm -rf /var/lib/apt/lists/*
 
 # Create a virtual environment and activate it
